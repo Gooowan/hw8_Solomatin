@@ -52,6 +52,7 @@ button {
     border: 1px solid white;
     border-radius: 4px;
     cursor: pointer;
+    margin-bottom: 5px;
     transition: background-color 0.3s;
 }
 
@@ -98,6 +99,16 @@ li > span {
 
 #remove-all-btn {
     margin-top: 5px;
+}
+
+.sort-btn{
+    padding: 5px 10px;
+}
+
+.active {
+    background-color: white;
+    border-radius: 3px;
+    border: 2px solid pink ;
 }
 
 /* Tablet Styles */

@@ -1,33 +1,42 @@
-class TodoItem {
-    constructor(text) {
-        this.text = text;
-        this.dateUpdated = new Date();
-        this.completed = false;
-    }
-}
-
-class TodoItemPremium extends TodoItem {
-    constructor(text, image) {
-        super(text);
-        this.image = image || null;
-    }
-}
-
-// Load tasks from local storage
-let tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-tasks = tasks.map(task => Object.assign(new TodoItem(), task));
-
-// Save tasks to local storage
-function saveTasksToLocalStorage() {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-}
-
 document.addEventListener('DOMContentLoaded', function() {
+    class TodoItem {
+        constructor(text) {
+            this.text = text;
+            this.date = new Date();
+            this.completed = false;
+            this.daysToDeadline = "No deadline set";
+        }
+    }
+
+    class TodoItemPremium extends TodoItem {
+        constructor(text, imageUrl) {
+            super(text);
+            this.imageUrl = imageUrl; // Additional attribute for the premium version
+        }
+    }
+
     const taskInput = document.getElementById('task-input');
     const taskList = document.getElementById('task-list');
     const saveTaskBtn = document.getElementById('save-task-btn');
     const removeAllBtn = document.getElementById('remove-all-btn');
     const removeCompletedBtn = document.getElementById('remove-completed-btn');
+    const sortAscBtn = document.getElementById('sort-asc-btn');
+    const sortDescBtn = document.getElementById('sort-desc-btn');
+    const clearStorageBtn = document.getElementById('clear-storage-btn');
+    const pickTodoBtn = document.getElementById('pick-todo-btn');
+
+    let tasks = [];
+
+    function saveTasksToLocalStorage() {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function loadTasksFromLocalStorage() {
+        const savedTasks = localStorage.getItem('tasks');
+        if (savedTasks) {
+            tasks = JSON.parse(savedTasks);
+        }
+    }
 
     function createTaskElement(task, index) {
         const li = document.createElement('li');
@@ -35,9 +44,10 @@ document.addEventListener('DOMContentLoaded', function() {
             li.classList.add('completed');
         }
         li.innerHTML = `
-        <span class="checkbox" data-index="${index}">${task.completed ? '✅' : '❌'}</span>
-        <span class="task-text" data-index="${index}">${task.text}</span>
-        <span class="days-to-deadline" data-index="${index}">${task.daysToDeadline}</span>
+        <span class="checkbox" style="margin-left: 10px" data-index="${index}">${task.completed ? '✅' : '❌'}</span>
+        <span class="task-text" data-index="${index}" style="display:inline;">${task.text}</span>
+        <input type="text" class="edit-task-input" data-index="${index}" style="display:none;" value="${task.text}">
+        <span class="days-to-deadline" data-index="${index}">${task.daysToDeadline} </span>
         <input type="number" class="edit-deadline-input" data-index="${index}" style="display:none;" min="1" value="${task.daysToDeadline}">
         <button class="edit-deadline-btn" data-index="${index}">Edit Deadline</button>
         <button class="remove-btn" style="margin-top: 5px" data-index="${index}">Remove</button>
@@ -47,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderTasks() {
         taskList.innerHTML = '';
-        tasks.sort((a, b) => a.dateUpdated.getTime() - b.dateUpdated.getTime());
         tasks.forEach((task, index) => {
             taskList.appendChild(createTaskElement(task, index));
         });
@@ -57,8 +66,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function addOrUpdateTask(e, editIndex = null) {
         if ((e.keyCode && e.keyCode !== 13 && e.keyCode !== 27) || !taskInput.value.trim()) return;
 
-        // The key code: Enter - 13, ESC is 27
-
         if (e.keyCode === 27) {
             taskInput.value = '';
             saveTaskBtn.onclick = addOrUpdateTask;
@@ -66,41 +73,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (editIndex !== null) {
-            tasks[editIndex] = {
-                text: taskInput.value.trim(),
-                dateUpdated: new Date(),
-                completed: tasks[editIndex].completed
-            };
+            tasks[editIndex] = new TodoItem(taskInput.value.trim());
+            tasks[editIndex].completed = tasks[editIndex].completed;
         } else {
-            tasks.unshift({
-                text: taskInput.value.trim(),
-                dateUpdated: new Date(),
-                completed: false,
-                daysToDeadline: "No deadline set"
-            });
+            tasks.unshift(new TodoItem(taskInput.value.trim()));
         }
         taskInput.value = '';
         saveTaskBtn.onclick = addOrUpdateTask;
         renderTasks();
     }
 
+    sortAscBtn.addEventListener('click', function() {
+        tasks.sort((a, b) => a.date - b.date);
+        renderTasks();
+    });
+
+    sortDescBtn.addEventListener('click', function() {
+        tasks.sort((a, b) => b.date - a.date);
+        renderTasks();
+    });
+
+    clearStorageBtn.addEventListener('click', function() {
+        localStorage.clear();
+        tasks = [];
+        renderTasks();
+    });
+
+    pickTodoBtn.addEventListener('click', function() {
+        // Removing the 'active' class from any previously highlighted task
+        const previousActive = taskList.querySelector('.active');
+        if (previousActive) {
+            previousActive.classList.remove('active');
+        }
+
+        const activeTodos = tasks.filter(task => !task.completed);
+        if (activeTodos.length) {
+            const randomTodo = activeTodos[Math.floor(Math.random() * activeTodos.length)];
+            const index = tasks.indexOf(randomTodo);
+            const todoElem = taskList.querySelector(`li[data-index="${index}"]`);  // Adjusted this line to target the specific list item
+            todoElem.classList.add('active');
+        }
+    });
+
     taskList.addEventListener('click', function(e) {
         const index = e.target.dataset.index;
-        if (e.target.classList.contains('checkbox') || e.target.classList.contains('task-text')) {
+        if (e.target.classList.contains('checkbox')) {
             tasks[index].completed = !tasks[index].completed;
             renderTasks();
         } else if (e.target.classList.contains('remove-btn')) {
             tasks.splice(index, 1);
             renderTasks();
+        } else if (e.target.classList.contains('edit-deadline-btn')) {
+            const inputElem = document.querySelector(`.edit-deadline-input[data-index="${index}"]`);
+            const spanElem = document.querySelector(`.days-to-deadline[data-index="${index}"]`);
+            inputElem.style.display = "inline";
+            spanElem.style.display = "none";
+            inputElem.focus();
         }
     });
 
     taskList.addEventListener('dblclick', function(e) {
+        e.preventDefault();
+        const index = e.target.dataset.index;
         if (e.target.classList.contains('task-text')) {
-            const index = e.target.dataset.index;
-            taskInput.value = tasks[index].text;
-            taskInput.focus();
-            saveTaskBtn.onclick = (e) => addOrUpdateTask(e, index);
+            const inputElem = document.querySelector(`.edit-task-input[data-index="${index}"]`);
+            const spanElem = e.target;
+
+            spanElem.style.display = "none";
+            inputElem.style.display = "inline";
+            inputElem.focus();
         }
     });
 
@@ -108,24 +149,15 @@ document.addEventListener('DOMContentLoaded', function() {
     taskInput.addEventListener('keydown', addOrUpdateTask);
 
     removeAllBtn.addEventListener('click', function() {
-        tasks = [];
-        renderTasks();
+        if (!tasks.some(task => !task.completed) || confirm('Are you sure?')) {
+            tasks = [];
+            renderTasks();
+        }
     });
 
     removeCompletedBtn.addEventListener('click', function() {
         tasks = tasks.filter(task => !task.completed);
         renderTasks();
-    });
-
-    taskList.addEventListener('click', function(e) {
-        if (e.target.classList.contains('edit-deadline-btn')) {
-            const index = e.target.dataset.index;
-            const inputElem = document.querySelector(`.edit-deadline-input[data-index="${index}"]`);
-            const spanElem = document.querySelector(`.days-to-deadline[data-index="${index}"]`);
-            inputElem.style.display = "inline";
-            spanElem.style.display = "none";
-            inputElem.focus();
-        }
     });
 
     taskList.addEventListener('blur', function(e) {
@@ -137,22 +169,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.target.style.display = "none";
             spanElem.style.display = "inline";
             renderTasks();
+        } else if (e.target.classList.contains('edit-task-input')) {
+            const index = e.target.dataset.index;
+            tasks[index].text = e.target.value.trim();
+            const spanElem = document.querySelector(`.task-text[data-index="${index}"]`);
+            spanElem.textContent = tasks[index].text;
+            e.target.style.display = "none";
+            spanElem.style.display = "inline";
+            renderTasks();
         }
     }, true);
 
-    document.getElementById('clear-storage-btn').addEventListener('click', function() {
-        localStorage.clear();
-        tasks = [];
-        renderTasks();
-    });
-
-    document.getElementById('pick-todo-btn').addEventListener('click', function() {
-        if (tasks.length === 0) return;
-        const randomIndex = Math.floor(Math.random() * tasks.length);
-        const todos = document.querySelectorAll('#task-list li');
-        todos.forEach(todo => todo.classList.remove('active'));
-        todos[randomIndex].classList.add('active');
-    });
-
+    loadTasksFromLocalStorage();
     renderTasks();  // Initial render of tasks
 });
