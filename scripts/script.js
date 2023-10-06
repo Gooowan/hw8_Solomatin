@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     pickTodoBtn.addEventListener('click', function() {
-        // Removing the 'active' class from any previously highlighted task
         const previousActive = taskList.querySelector('.active');
         if (previousActive) {
             previousActive.classList.remove('active');
@@ -110,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeTodos.length) {
             const randomTodo = activeTodos[Math.floor(Math.random() * activeTodos.length)];
             const index = tasks.indexOf(randomTodo);
-            const todoElem = taskList.querySelector(`li[data-index="${index}"]`);  // Adjusted this line to target the specific list item
+            const todoElem = taskList.querySelector(`li [data-index="${index}"]`);
             todoElem.classList.add('active');
         }
     });
